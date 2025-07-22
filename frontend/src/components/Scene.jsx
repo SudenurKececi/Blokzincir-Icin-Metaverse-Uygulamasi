@@ -1,58 +1,58 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+// frontend/src/components/Scene.jsx
 
-export default function Scene({ cid, fileName }) {
-  const meshRef = useRef();
-  const [sceneObj, setSceneObj] = useState(null);
+import React, { useEffect, useRef, useState } from 'react'
+import { useFrame }            from '@react-three/fiber'
+import { GLTFLoader }          from 'three/examples/jsm/loaders/GLTFLoader'
 
-  // Dönen küp: cid yoksa her frame döndür
-  useFrame((_, delta) => {
-    if (!cid && meshRef.current) {
-      meshRef.current.rotation.y += delta;
-    }
-  });
+// Öncelikle .env içindeki gateway'e bak, yoksa localhost:8080 kullan
+const IPFS_GATEWAY = process.env.REACT_APP_IPFS_GATEWAY || 'http://localhost:8080'
 
-  // CID değişince IPFS'ten buffer + parse
+export default function Scene({ cid }) {
+  const meshRef       = useRef()
+  const [sceneObject, setSceneObject] = useState(null)
+
   useEffect(() => {
+    // Eğer henüz bir CID yoksa, önceki sahneyi kaldır
     if (!cid) {
-      setSceneObj(null);
-      return;
+      setSceneObject(null)
+      return
     }
-    let canceled = false;
-    const loader = new GLTFLoader();
 
-    (async () => {
-      try {
-        const url = `https://gateway.pinata.cloud/ipfs/${cid}`;
+    // GLTFLoader ile fetch & parse
+    const loader = new GLTFLoader()
+    // Local IPFS gateway URL: http://localhost:8080/ipfs/<CID>
+    //const modelUrl = `${IPFS_GATEWAY}/ipfs/${cid}`
+const modelUrl = `http://localhost:8080/ipfs/${cid}`
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const buffer = await res.arrayBuffer();
-        loader.parse(
-          buffer,
-          '',
-          gltf => { if (!canceled) setSceneObj(gltf.scene); },
-          err => console.error('Gltf parse error:', err)
-        );
-      } catch (e) {
-        console.error('Fetch/parse failed:', e);
+    loader.load(
+      modelUrl,
+      gltf => {
+        setSceneObject(gltf.scene)
+      },
+      // progress callback (isteğe bağlı)
+      xhr => {
+        console.log(`Model yükleniyor: ${((xhr.loaded/xhr.total)*100).toFixed(1)}%`)
+      },
+      err => {
+        console.error('GLTF yükleme hatası:', err)
       }
-    })();
+    )
+  }, [cid])
 
-    return () => { canceled = true; };
-  }, [cid, fileName]);
+  // Eğer sceneObject yoksa basit bir dönen kutu göster
+  useFrame((_, delta) => {
+    if (!sceneObject && meshRef.current) {
+      meshRef.current.rotation.y += delta
+    }
+  })
 
-  // Model geldi mi?
-  if (sceneObj) {
-    return <primitive object={sceneObj} />;
-  }
-
-  // Fallback: pembe küp
-  return (
-    <mesh ref={meshRef}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color="#1365ff" />
-    </mesh>
-  );
+  // Render
+  return sceneObject
+    ? <primitive object={sceneObject} />
+    : (
+      <mesh ref={meshRef}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="blue" />
+      </mesh>
+    )
 }

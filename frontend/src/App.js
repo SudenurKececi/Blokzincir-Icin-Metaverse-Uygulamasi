@@ -1,45 +1,39 @@
-// src/App.js
-import React, { useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import './App.css';
-import UploadAndMint from './components/UploadAndMint';
-import Scene from './components/Scene';
+// frontend/src/App.js
+import React, { useState } from 'react'
+import { Canvas }           from '@react-three/fiber'
+import UploadAndMint       from './components/UploadAndMint'
+import Scene               from './components/Scene'
 
 function App() {
-  const [lastCid,  setLastCid]  = useState(null);
-  const [lastName, setLastName] = useState('');
+  const [cid, setCid]       = useState(null)
+  const [fileName, setName] = useState('')
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      {/* 3D Sahne */}
-      <div style={{ flex: 3 }}>
-        <Canvas camera={{ position: [0, 2, 5] }}>
+    <div style={{ display:'flex', height:'100vh' }}>
+      <div style={{ flex:3 }}>
+        <Canvas camera={{ position: [0,2,5] }}>
           <ambientLight />
-          <pointLight position={[10, 10, 10]} />
-
-          {/* Scene her zaman mount ediliyor */}
-          <Scene cid={lastCid} fileName={lastName} />
+          <pointLight position={[10,10,10]} />
+          <Scene cid={cid} />
         </Canvas>
       </div>
-
-      {/* Mint Paneli */}
-      <div style={{ flex: 1, padding: '1rem', background: '#f0f0f0' }}>
-        <h2>Upload & Mint Asset</h2>
+      <div style={{ flex:1, padding:20, background:'#eee' }}>
+        <h2>Upload & Mint</h2>
         <UploadAndMint
-          onMinted={(cid, fileName) => {
-            setLastCid(cid);
-            setLastName(fileName);
+          onMinted={(newCid, name) => {
+            setCid(newCid)
+            setName(name)
           }}
         />
-        {lastCid && (
+        {cid && (
           <>
-            <p><strong>Last CID:</strong> {lastCid}</p>
-            <p><strong>File Name:</strong> {lastName}</p>
+            <p><strong>CID:</strong> {cid}</p>
+            <p><strong>Name:</strong> {fileName}</p>
           </>
         )}
       </div>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
