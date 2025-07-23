@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { create } from 'ipfs-http-client';
 
+// IPFS client oluşturma (timeout ile)
 const ipfs = create({ 
-  url: 'http://localhost:5001/api/v0' 
+  url: 'http://localhost:5001/api/v0',
+  timeout: '2m' // 2 dakika timeout
 });
 
-export default function UploadAndMint({ onMinted }) {
+export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -14,20 +16,29 @@ export default function UploadAndMint({ onMinted }) {
 
   // Sayfa yüklendiğinde cüzdan bağlantısını kontrol et
   useEffect(() => {
-    if (window.ethereum?.selectedAddress) {
-      setAccount(window.ethereum.selectedAddress);
-    }
-  }, []);
-
-  // MetaMask bağlantı fonksiyonu
-  const connectMetaMask = async () => {
-    try {
-      if (!window.ethereum) {
-        window.open('https://metamask.io/download.html', '_blank');
-        throw new Error('MetaMask yüklü değil!');
+    const checkWalletConnection = async () => {
+      if (window.ethereum?.selectedAddress) {
+        setAccount(window.ethereum.selectedAddress);
+        
+        // Ağ kontrolü yap
+        try {
+          const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+          if (chainId !== '0x7A69') {
+            await switchToHardhatNetwork();
+          }
+        } catch (error) {
+          console.error('Ağ kontrol hatası:', error);
+          onError?.(error);
+        }
       }
+    };
+    
+    checkWalletConnection();
+  }, [onError]);
 
-      // Hardhat ağını ekle
+  // Hardhat ağına geçiş fonksiyonu
+  const switchToHardhatNetwork = async () => {
+    try {
       await window.ethereum.request({
         method: 'wallet_addEthereumChain',
         params: [{
@@ -37,6 +48,22 @@ export default function UploadAndMint({ onMinted }) {
           rpcUrls: ['http://localhost:8545'],
         }],
       });
+    } catch (error) {
+      console.error('Ağ ekleme hatası:', error);
+      onError?.(error);
+      throw error;
+    }
+  };
+
+  // MetaMask bağlantı fonksiyonu
+  const connectMetaMask = async () => {
+    try {
+      if (!window.ethereum) {
+        window.open('https://metamask.io/download.html', '_blank');
+        throw new Error('MetaMask yüklü değil!');
+      }
+
+      await switchToHardhatNetwork();
 
       // Hesapları iste
       const accounts = await window.ethereum.request({ 
@@ -46,38 +73,68 @@ export default function UploadAndMint({ onMinted }) {
       setAccount(accounts[0]);
       setStatus('✅ MetaMask bağlandı!');
     } catch (error) {
+      console.error('Bağlantı hatası:', error);
       setStatus(`❌ Hata: ${error.message}`);
+      onError?.(error);
     }
   };
 
   // Dosya seçme fonksiyonu
   const handleFile = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      setStatus('✅ Dosya seçildi: ' + e.target.files[0].name);
+    if (!e.target.files?.[0]) return;
+
+    const selectedFile = e.target.files[0];
+    
+    // Dosya tipi kontrolü (GLB veya GLTF)
+    if (!selectedFile.name.match(/\.(glb|gltf)$/i)) {
+      const err = new Error('Sadece .glb veya .gltf dosyaları yükleyebilirsiniz');
+      setStatus(`❌ ${err.message}`);
+      onError?.(err);
+      return;
     }
+
+    // Dosya boyutu kontrolü (max 50MB)
+    if (selectedFile.size > 50 * 1024 * 1024) {
+      const err = new Error('Dosya boyutu 50MB sınırını aşıyor');
+      setStatus(`❌ ${err.message}`);
+      onError?.(err);
+      return;
+    }
+
+    setFile(selectedFile);
+    setStatus(`✅ Dosya seçildi: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`);
   };
 
   // Mint fonksiyonu (IPFS + Blockchain entegre)
   const handleMint = async () => {
     if (!account) {
-      setStatus('⚠️ Önce MetaMask ile bağlanın');
+      const err = new Error('Önce MetaMask ile bağlanın');
+      setStatus(`⚠️ ${err.message}`);
+      onError?.(err);
       return;
     }
 
     if (!file) {
-      setStatus('⚠️ Lütfen bir dosya seçin');
+      const err = new Error('Lütfen bir dosya seçin');
+      setStatus(`⚠️ ${err.message}`);
+      onError?.(err);
       return;
     }
 
     setIsLoading(true);
     setStatus('🔄 IPFS\'e yükleniyor...');
+    onMintingStart?.();
 
     try {
-      // 1. Dosyayı IPFS'e yükle
-      const added = await ipfs.add(file);
+      // 1. Dosyayı IPFS'e yükle (düzenli path ile)
+      const added = await ipfs.add({
+        path: `3d-models/${Date.now()}_${file.name.replace(/\s+/g, '_')}`,
+        content: file
+      });
       const cid = added.cid.toString();
-      setStatus('🔄 IPFS yükleme tamamlandı, mint işlemi başlatılıyor...');
+      const ipfsUrl = `ipfs://${cid}`;
+
+      setStatus('🔄 Smart Contract çağrısı yapılıyor...');
 
       // 2. MetaMask ile mint işlemi
       const txHash = await window.ethereum.request({
@@ -85,16 +142,23 @@ export default function UploadAndMint({ onMinted }) {
         params: [{
           from: account,
           to: contractAddress,
-          value: '0x' + (0.01 * 1e18).toString(16), // 0.01 ETH
-          data: '0x1aa3a008' // Mint fonksiyonu hex kodu
+          value: '0x0', // 0.00 ETH
+          data: '0x85fb566d' // register(string) fonksiyonu hex kodu
         }]
       });
 
-      setStatus(`✅ Mint başarılı! CID: ${cid} | TX: ${txHash}`);
-      onMinted(cid); // Parent componente CID'i ilet
+      setStatus(`✅ Mint başarılı!\nCID: ${cid}\nTX Hash: ${txHash}`);
+      onMinted({ 
+        cid, 
+        txHash, 
+        ipfsUrl,
+        fileName: file.name // Dosya adını da gönderiyoruz
+      });
     } catch (error) {
       console.error('Mint hatası:', error);
-      setStatus(`❌ Hata: ${error.message}`);
+      const errorMessage = error.message.split('\n')[0];
+      setStatus(`❌ Hata: ${errorMessage}`);
+      onError?.(error);
     } finally {
       setIsLoading(false);
     }
@@ -105,69 +169,121 @@ export default function UploadAndMint({ onMinted }) {
       padding: '20px', 
       maxWidth: '500px', 
       margin: '0 auto',
-      fontFamily: 'Arial, sans-serif'
+      fontFamily: 'Arial, sans-serif',
+      backgroundColor: '#f5f5f5',
+      borderRadius: '8px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
     }}>
-      <h2 style={{ color: '#333' }}>NFT Mint Sayfası</h2>
+      <h2 style={{ color: '#333', textAlign: 'center' }}>3D NFT Mint Arayüzü</h2>
       
       {/* Dosya Yükleme */}
-      <div style={{ margin: '15px 0' }}>
+      <div style={{ 
+        margin: '20px 0',
+        padding: '15px',
+        backgroundColor: 'white',
+        borderRadius: '8px'
+      }}>
+        <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>
+          3D Model Dosyası Seç (.glb/.gltf)
+        </label>
         <input
           type="file"
           onChange={handleFile}
           disabled={isLoading}
-          style={{ display: 'block', marginBottom: '10px' }}
+          accept=".glb,.gltf"
+          style={{ 
+            display: 'block',
+            width: '100%',
+            padding: '8px',
+            border: '1px solid #ddd',
+            borderRadius: '4px'
+          }}
         />
       </div>
 
       {/* MetaMask Bağlantısı */}
-      {!account ? (
-        <button
-          onClick={connectMetaMask}
-          disabled={isLoading}
-          style={{
-            padding: '10px 15px',
-            background: '#f6851b',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-            margin: '10px 0',
-            fontSize: '16px'
-          }}
-        >
-          🔗 MetaMask ile Bağlan
-        </button>
-      ) : (
-        <p style={{ margin: '10px 0' }}>
-          Bağlı Cüzdan: {account.slice(0, 6)}...{account.slice(-4)}
-        </p>
-      )}
+      <div style={{ 
+        margin: '20px 0',
+        padding: '15px',
+        backgroundColor: 'white',
+        borderRadius: '8px'
+      }}>
+        {!account ? (
+          <button
+            onClick={connectMetaMask}
+            disabled={isLoading}
+            style={{
+              padding: '12px 20px',
+              background: '#f6851b',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              width: '100%',
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            <span>🔗</span> MetaMask ile Bağlan
+          </button>
+        ) : (
+          <div>
+            <p style={{ margin: '0 0 10px 0', fontWeight: 'bold' }}>Bağlı Cüzdan:</p>
+            <div style={{
+              padding: '10px',
+              backgroundColor: '#f0f0f0',
+              borderRadius: '4px',
+              wordBreak: 'break-all'
+            }}>
+              {account}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Mint Butonu */}
       <button
         onClick={handleMint}
         disabled={!file || !account || isLoading}
         style={{
-          padding: '10px 15px',
-          background: !file || !account ? '#cccccc' : '#4CAF50',
+          padding: '12px 20px',
+          background: (!file || !account || isLoading) ? '#cccccc' : '#4CAF50',
           color: 'white',
           border: 'none',
           borderRadius: '5px',
           cursor: (!file || !account || isLoading) ? 'not-allowed' : 'pointer',
-          fontSize: '16px'
+          width: '100%',
+          fontSize: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          margin: '20px 0'
         }}
       >
-        {isLoading ? '⏳ İşleniyor...' : '🏷️ Mint Yap (0.01 ETH)'}
+        {isLoading ? (
+          <span>⏳ İşleniyor...</span>
+        ) : (
+          <>
+            <span>🏷️</span> Mint Yap
+          </>
+        )}
       </button>
 
       {/* Durum Mesajı */}
       {status && (
         <div style={{ 
           marginTop: '20px',
-          padding: '10px',
-          background: status.includes('✅') ? '#e6ffed' : '#ffebee',
-          borderRadius: '5px',
-          borderLeft: status.includes('✅') ? '4px solid #2ecc71' : '4px solid #e74c3c'
+          padding: '15px',
+          backgroundColor: status.includes('✅') ? '#e6ffed' : 
+                         status.includes('❌') ? '#ffebee' : '#fff3cd',
+          borderRadius: '8px',
+          borderLeft: status.includes('✅') ? '4px solid #2ecc71' : 
+                     status.includes('❌') ? '4px solid #e74c3c' : '4px solid #ffc107',
+          whiteSpace: 'pre-line'
         }}>
           {status}
         </div>
