@@ -31,14 +31,14 @@ function App() {
       {/* ---------- YAN PANEL ---------- */}
       <div style={{
         flex:1,
-        padding: '32px',           // ↑ padding büyütüldü
-        background: '#f9fafb',     // ↑ soft arka plan
+        padding: '32px',           
+        background: '#f9fafb',     
         display:'flex',
         flexDirection:'column'
       }}>
         <h2 style={{
-          marginBottom: '24px',     // ↑ biraz daha boşluk
-          fontSize: '1.75rem',      // ↑ büyük başlık
+          marginBottom: '24px',    
+          fontSize: '1.75rem',    
           fontWeight: '700',
           color: '#222'
         }}>

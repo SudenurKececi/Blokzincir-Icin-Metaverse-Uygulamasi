@@ -1,6 +1,6 @@
 /* src/components/Gallery.css */
 
-/* Her satırda 2 kare sığacak şekilde sabit 2 sütun */
+
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -25,11 +25,11 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
-/* Görsel kısmını daha kısa yapacak şekilde padding-top oranını düşürdük */
+
 .gallery-img-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 60%;     /* Önceki 100% yerine 60%, görsel artık daha kısa */
+  padding-top: 60%;     
   background: #f0f0f0;
 }
 

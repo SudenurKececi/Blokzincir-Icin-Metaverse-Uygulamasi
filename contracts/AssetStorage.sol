@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: UNLICENSED
+
 pragma solidity ^0.8.18;
 
 // contracts/AssetStorage.sol
 pragma solidity ^0.8.18;
 
 /// @title AssetStorage
-/// @notice IPFS CID’lerini zincirde saklamak için minimal kontrat
+/// @notice IPFS CID’lerini zincirde saklamak için minimal akıllı kontrat
 contract AssetStorage {
     uint256 public nextId;
     mapping(uint256 => string) public cids;

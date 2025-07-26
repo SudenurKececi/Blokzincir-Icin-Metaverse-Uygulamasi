@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { create } from 'ipfs-http-client';
 
-// IPFS client oluşturma (timeout ile)
+
 const ipfs = create({ 
   url: 'http://localhost:5001/api/v0',
-  timeout: '2m' // 2 dakika timeout
+  timeout: '2m' // 2 dakika timeout büyük dosyalar ve güvenlik için
 });
 
 export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
@@ -15,13 +15,13 @@ export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
   const [account, setAccount] = useState('');
   const [contractAddress] = useState('0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512');
 
-  // Sayfa yüklendiğinde cüzdan bağlantısını kontrol et
+  
   useEffect(() => {
     const checkWalletConnection = async () => {
       if (window.ethereum?.selectedAddress) {
         setAccount(window.ethereum.selectedAddress);
         
-        // Ağ kontrolü yap
+        
         try {
           const chainId = await window.ethereum.request({ method: 'eth_chainId' });
           if (chainId !== '0x7A69') {
@@ -37,7 +37,7 @@ export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
     checkWalletConnection();
   }, [onError]);
 
-  // Hardhat ağına geçiş fonksiyonu
+  
   const switchToHardhatNetwork = async () => {
     try {
       await window.ethereum.request({
@@ -56,7 +56,7 @@ export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
     }
   };
 
-  // MetaMask bağlantı fonksiyonu
+  
   const connectMetaMask = async () => {
     try {
       if (!window.ethereum) {
@@ -66,7 +66,7 @@ export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
 
       await switchToHardhatNetwork();
 
-      // Hesapları iste
+      
       const accounts = await window.ethereum.request({ 
         method: 'eth_requestAccounts' 
       });
@@ -80,13 +80,13 @@ export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
     }
   };
 
-  // Dosya seçme fonksiyonu
+  
   const handleFile = (e) => {
     if (!e.target.files?.[0]) return;
 
     const selectedFile = e.target.files[0];
     
-    // Dosya tipi kontrolü (GLB veya GLTF)
+    
     if (!selectedFile.name.match(/\.(glb|gltf)$/i)) {
       const err = new Error('Sadece .glb veya .gltf dosyaları yükleyebilirsiniz');
       setStatus(`❌ ${err.message}`);
@@ -94,7 +94,7 @@ export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
       return;
     }
 
-    // Dosya boyutu kontrolü (max 50MB)
+    
     if (selectedFile.size > 50 * 1024 * 1024) {
       const err = new Error('Dosya boyutu 50MB sınırını aşıyor');
       setStatus(`❌ ${err.message}`);
@@ -153,10 +153,10 @@ export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
         cid, 
         txHash, 
         ipfsUrl,
-        fileName: file.name, // Dosya adını da gönderiyoruz
+        fileName: file.name, 
         fileType: file.type,
-        fileSize: file.size,         // byte cinsinden boyut
-        timestamp: new Date().toLocaleString()  // ★ Mint zamanı
+        fileSize: file.size,       
+        timestamp: new Date().toLocaleString() 
 
       });
     } catch (error) {

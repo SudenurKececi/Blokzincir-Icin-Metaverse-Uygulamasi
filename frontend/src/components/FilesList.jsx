@@ -1,9 +1,7 @@
 // frontend/src/components/FilesList.jsx
 import React from 'react'
 
-/**
- * byte cinsinden gelen fileSize’ı okunaklı KB/MB formatına çevirir
- */
+
 function formatSize(size) {
   if (size > 1024 * 1024) {
     return (size / 1024 / 1024).toFixed(2) + ' MB'
@@ -57,7 +55,7 @@ export default function FilesList({ items }) {
   )
 }
 
-// ortak stil objeleri
+
 const thStyle = {
   textAlign: 'left',
   padding: '8px',

@@ -8,7 +8,7 @@ import path from 'path';
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 
-// IPFS client oluştur
+// IPFS client oluşturma
 const ipfs = create({ 
   url: 'http://localhost:5001/api/v0'
 });
