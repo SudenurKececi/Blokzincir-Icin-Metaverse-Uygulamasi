@@ -8,6 +8,7 @@ const ipfs = create({
 });
 
 export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
+
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -152,7 +153,11 @@ export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
         cid, 
         txHash, 
         ipfsUrl,
-        fileName: file.name // Dosya adını da gönderiyoruz
+        fileName: file.name, // Dosya adını da gönderiyoruz
+        fileType: file.type,
+        fileSize: file.size,         // byte cinsinden boyut
+        timestamp: new Date().toLocaleString()  // ★ Mint zamanı
+
       });
     } catch (error) {
       console.error('Mint hatası:', error);
