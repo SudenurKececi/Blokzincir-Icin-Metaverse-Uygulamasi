@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Metaverse NFT Gallery</title>
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <!-- Ethers v6 UMD bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.umd.min.js"></script>
+  <style>
+    body, html { margin:0; padding:0; overflow:hidden; }
+  </style>
+</head>
+<body>
+  <a-scene background="color: #ECECEC">
+    <a-entity id="gallery"></a-entity>
+    <a-entity camera look-controls wasd-controls position="0 1.6 5"></a-entity>
+    <a-entity light="type: ambient; intensity: 0.6"></a-entity>
+    <a-entity light="type: directional; intensity: 0.8" position="-1 2 1"></a-entity>
+  </a-scene>
+
+  <script>
+  window.addEventListener('load', async () => {
+    try {
+      // 1) MetaMask kontrolü
+      if (!window.ethereum) {
+        alert('Lütfen MetaMask yükleyip giriş yapın.');
+        return;
+      }
+
+      // 2) Provider & signer (Ethers v6)
+      //    BrowserProvider, kullanıcı arayüzü üzerinden ethereum erişimi sağlar
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      console.log('✅ Provider:', provider);
+
+      // hesap isteme
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+      // isterseniz imzalama için signer:
+      // const signer = await provider.getSigner();
+      // console.log('✅ Signer:', signer);
+
+      // 3) Kontrat örneği (okuma fonksiyonları için provider yeterli)
+      const contractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+      const contractABI = [
+        "function totalSupply() view returns (uint256)",
+        "function tokenURI(uint256) view returns (string)"
+      ];
+      const contract = new ethers.Contract(contractAddress, contractABI, provider);
+      console.log('✅ Contract:', contract);
+
+      // 4) Toplam NFT sayısını al
+      const totalSupplyBN = await contract.totalSupply();
+      const totalSupply = Number(totalSupplyBN);
+      console.log(`🏷 totalSupply = ${totalSupply}`);
+
+      // 5) A-Frame galeriye modelleri yükle
+      const gallery = document.getElementById('gallery');
+      const perRow = 5, spacing = 3;
+
+      for (let i = 0; i < totalSupply; i++) {
+        console.log(`🔄 Fetching tokenURI(${i})…`);
+        const uri = await contract.tokenURI(i);
+        console.log(`   → tokenURI: ${uri}`);
+
+        // metadata’yı fetch et
+        const res = await fetch(uri);
+        const metadata = await res.json();
+        // GLB url’inizi bulun (animation_url / image / model)
+        const modelUrl = metadata.animation_url || metadata.image || metadata.model;
+        console.log(`   → modelUrl: ${modelUrl}`);
+
+        // sahnede pozisyon hesapla
+        const row = Math.floor(i / perRow), col = i % perRow;
+        const x = (col - (perRow - 1)/2) * spacing;
+        const y = 1.5, z = -row * spacing;
+
+        // A-Frame entity oluştur
+        const ent = document.createElement('a-entity');
+        ent.setAttribute('gltf-model', modelUrl);
+        ent.setAttribute('position', `${x} ${y} ${z}`);
+        ent.setAttribute('scale', '1 1 1');
+        ent.setAttribute('animation-mixer', '');
+        // tokenId etiketi
+        const label = document.createElement('a-text');
+        label.setAttribute('value', `#${i}`);
+        label.setAttribute('align', 'center');
+        label.setAttribute('position', '0 -0.8 0');
+        label.setAttribute('color', '#333');
+        ent.appendChild(label);
+
+        gallery.appendChild(ent);
+      }
+    } catch (err) {
+      console.error('Gallery load error:', err);
+      alert('Galeriyi yükleyemedik, konsola bakın.');
+    }
+  });
+  </script>
+</body>
+</html>

@@ -6,7 +6,7 @@
 1) PREREQUISITES
 --------------------------------------------------------------------
 - Node.js (v16+)
-- npm or yarn
+- npm 
 - Metamask (or any Web3 wallet) for front‑end tests
 - An Ethereum testnet account (e.g., Goerli)
 

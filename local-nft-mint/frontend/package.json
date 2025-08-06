@@ -1,0 +1,55 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@google/model-viewer": "^4.1.0",
+    "@react-three/drei": "^10.5.1",
+    "@react-three/fiber": "^9.2.0",
+    "ajv": "^8.17.1",
+    "ajv-keywords": "^5.1.0",
+    "draco3dgltf": "^1.5.7",
+    "ethers": "^6.15.0",
+    "ipfs-http-client": "^60.0.1",
+    "nft.storage": "^7.2.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "react-scripts": "^5.0.1",
+    "three": "^0.178.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@craco/craco": "^7.1.0",
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "buffer": "^6.0.3",
+    "schema-utils": "^4.3.2",
+    "webpack": "^5.100.2"
+  },
+  "browser": {
+    "fs": false,
+    "path": false,
+    "os": false
+  }
+}
