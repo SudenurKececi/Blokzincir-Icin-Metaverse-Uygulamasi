@@ -3,65 +3,56 @@ import cors from 'cors';
 import multer from 'multer';
 import { create as createIpfsClient } from 'ipfs-http-client';
 import Database from 'better-sqlite3';
+import path    from 'path';
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Veritabanı bağlantısı - UNIQUE constraint kaldırıldı
-const db = new Database('nfts.db');
-db.exec(`
+// Veritabanını aç (aynı dizinde nfts.db dosyası yoksa oluşturulur.)
+const db = new Database(path.join(process.cwd(), 'nfts.db'));
+
+  db.exec(`
   CREATE TABLE IF NOT EXISTS nfts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cid TEXT NOT NULL,
-    createdAt INTEGER NOT NULL,
-    fileName TEXT,
-    fileSize INTEGER,
-    fileType TEXT,
-    account TEXT,
-    txHash TEXT
+    cid TEXT NOT NULL UNIQUE,
+    createdAt INTEGER NOT NULL
   );
 `);
 
 
-const ipfs = createIpfsClient({ url: 'http://127.0.0.1:5001' });
+const ipfs = createIpfsClient({
+  host: '127.0.0.1',
+  port: 5001,
+  protocol: 'http'
+});
 
 app.use(cors());
 app.use(express.json());
 
-// Mint endpoint - Aynı dosyaya izin veren versiyon
+// Mint endpoint 
 app.post('/api/mint', upload.single('file'), async (req, res) => {
+   console.log('[API] Mint başladı:', req.file?.originalname);
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'Dosya yüklenmedi' });
+      return res.status(400).json({ success:false, error:'Dosya yok' });
     }
+    const added = await ipfs.add(req.file.buffer);
+    const cid   = added.cid.toString();
+    console.log('[API] IPFS’den dönen CID:', cid);
 
-    // IPFS'e yükleme (bu kısmı kaldırdık, artık sadece veritabanına kaydediyoruz)
-    const cid = `simulated-cid-${Date.now()}`; // Gerçek uygulamada IPFS'ten alınacak
-    
     // Veritabanına kaydet
-    const stmt = db.prepare(`
-      INSERT INTO nfts (
-        cid, createdAt, fileName, fileSize, fileType, account
-      ) VALUES (?, ?, ?, ?, ?, ?)
-    `);
+   db.prepare('INSERT OR IGNORE INTO nfts (cid, createdAt) VALUES (?,?)')
+      .run(cid, Date.now());
     
-    stmt.run(
-      cid,
-      Date.now(),
-      req.file.originalname,
-      req.file.size,
-      req.file.mimetype,
-      req.body.account || 'unknown'
-    );
-
+   
     res.json({ 
       success: true, 
       cid,
-      fileName: req.file.originalname 
+    
     });
 
   } catch (err) {
-    console.error(err);
+     console.error('[API] Mint hatası:', e);
     res.status(500).json({ 
       success: false, 
       error: err.message 
@@ -72,9 +63,26 @@ app.post('/api/mint', upload.single('file'), async (req, res) => {
 // Diğer endpoint'ler
 app.get('/api/cids', (req, res) => {
   const rows = db.prepare('SELECT * FROM nfts ORDER BY createdAt DESC').all();
-  res.json({ items: rows });
+    res.json({ cids: rows.map(r => r.cid) });
+});
+// 3) IPFS proxy: CID ile /ipfs/:cid çağrısı 
+app.get('/ipfs/:cid', async (req, res) => {
+  const cid = req.params.cid;
+  console.log(`[API] /ipfs çağrıldı: ${cid}`);
+  try {
+    res.setHeader('Content-Type', 'application/octet-stream');
+    for await (const chunk of ipfs.cat(cid)) {
+      res.write(chunk);
+    }
+    res.end();
+    console.log(`[API] /ipfs tamamlandı: ${cid}`);
+  } catch (e) {
+    console.error('[API] IPFS cat hatası:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
-app.listen(4000, () => {
-  console.log('🚀 API http://localhost:4000 adresinde çalışıyor');
+const PORT = 4000;
+app.listen(PORT, () => {
+  console.log(`🚀 API http://localhost:${PORT} adresinde çalışıyor`);
 });

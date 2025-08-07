@@ -161,7 +161,7 @@ export default function UploadAndMint({ onMinted, onMintingStart, onError }) {
         cid,
         txHash,
         ipfsUrl: `ipfs://${cid}`,
-        fileName,
+        fileName: file.name,
         fileType: file.type,
         fileSize: file.size,
         timestamp: new Date().toLocaleString()
