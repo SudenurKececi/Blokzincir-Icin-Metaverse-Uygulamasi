@@ -23,7 +23,8 @@ const db = new Database(path.join(process.cwd(), 'nfts.db'));
 const ipfs = createIpfsClient({
   host: '127.0.0.1',
   port: 5001,
-  protocol: 'http'
+  protocol: 'http',
+  timeout: 120000 //2dk timeout büyük dosyalar için
 });
 
 app.use(cors());
@@ -36,7 +37,15 @@ app.post('/api/mint', upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success:false, error:'Dosya yok' });
     }
-    const added = await ipfs.add(req.file.buffer);
+
+     // IPFS'e yüklemeden önce kontrol
+   /* const ipfsId = await ipfs.id();
+    console.log('IPFS Bağlantısı:', ipfsId); */
+
+     const added = await ipfs.add(req.file.buffer, {
+      timeout: 120000 // 2 dakika timeout büyük dosyalar için
+    });
+
     const cid   = added.cid.toString();
     console.log('[API] IPFS’den dönen CID:', cid);
 
