@@ -133,12 +133,8 @@ Museum.unity sahnesini aç, Loader script’inde GET /api/nfts ile listeyi çeki
 
 | Metaverse NFT Müzesi Kısa Bir Tur |
 
-<p align="center">
-  <img src="Hardhat/nftmetaversemuseum/NFTMetaverseMuseum/Assets/NFTMuseum.gif?raw=1" alt="NFT Metaverse Museum" width="80%">
-</p>
 
-
-[GIF’i doğrudan aç](Hardhat/nftmetaversemuseum/NFTMetaverseMuseum/Assets/NFTMuseum.gif?raw=1)
+[GIF’i doğrudan aç](nftmetaversemuseum/NFTMetaverseMuseum/Assets/NFTMuseum.gif?raw=1)
 
 
 
